@@ -1,17 +1,23 @@
 -- 報修登記系統：供 Supabase 全新建表使用，僅提供 SQL，不會自動執行。
 -- 本檔不是既有資料表的升級腳本；同名資料表存在時應停止並另行設計遷移。
+-- 不使用 IF NOT EXISTS，以免沿用不符合本檔權限與 CHECK 要求的既有資料表。
+-- BEGIN／COMMIT 讓建表、約束與授權在同一交易完成；本次僅儲存檔案，不執行。
 -- 實作選擇：姓名、地點、問題說明均必填；字數上限分別為 100、200、5000 字元。
 -- 字數與必填規則為本設計採用的限制，正式上線前仍需確認是否符合業務需求。
 BEGIN;
 
 -- 建立資料表：識別碼與建立時間由資料庫產生，時間使用含時區型態。
 CREATE TABLE public.repair_requests (
+    -- 系統欄位：UUID 主鍵與建立時間自動產生，不授予 anon 指定值的權限。
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at timestamptz NOT NULL DEFAULT now(),
+    -- 使用者輸入欄位：必填，文字長度及允許值由下方 CHECK 驗證。
     reporter_name text NOT NULL,
     location text NOT NULL,
     category text NOT NULL,
     description text NOT NULL,
+    -- 緊急程度可省略並預設為「中」；匿名新增的狀態由資料庫預設為「待處理」。
+    -- status 的預設值本身不會阻止指定其他值，另以 GRANT 與 RLS 限制匿名新增。
     urgency text NOT NULL DEFAULT '中',
     status text NOT NULL DEFAULT '待處理',
 
@@ -76,4 +82,7 @@ CREATE POLICY repair_requests_anon_insert
 
 -- 不建立 UPDATE 或 DELETE 政策；一般匿名用戶無法修改或刪除。
 -- service_role、超級使用者及通常的資料表擁有者可繞過 RLS，金鑰不得放在前端。
+-- 安全邊界：公開讀取會揭露所有報修內容，請勿儲存個資、密碼或其他敏感資訊。
+-- 安全邊界：匿名新增沒有身分驗證、速率限制或防機器人機制，仍可能遭灌入垃圾資料。
+-- 維運邊界：本檔未提供管理員更新流程；處理進度須另設可信任的後端與最小權限。
 COMMIT;
