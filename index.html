@@ -34,6 +34,12 @@
     <section class="requests-section" aria-labelledby="list-heading">
       <div class="section-heading"><div><p class="eyebrow">02 / RECENT REQUESTS</p><h2 id="list-heading">最近報修 <span class="count" id="request-count">—</span></h2></div><button type="button" class="secondary" id="refresh-button">重新整理</button></div>
       <p class="muted">顯示最近 20 筆，依登記時間由新到舊排列。</p>
+      <div id="urgency-filters" class="urgency-filters" role="group" aria-label="依緊急程度篩選報修">
+        <button type="button" class="secondary" data-urgency="全部" aria-pressed="true">全部</button>
+        <button type="button" class="secondary" data-urgency="高" aria-pressed="false">高</button>
+        <button type="button" class="secondary" data-urgency="中" aria-pressed="false">中</button>
+        <button type="button" class="secondary" data-urgency="低" aria-pressed="false">低</button>
+      </div>
       <p id="list-message" class="message" role="status" aria-live="polite" aria-atomic="true"></p>
       <div id="request-list" class="request-list" aria-busy="false"></div>
     </section>
