@@ -35,6 +35,16 @@
     }).format(date);
   }
 
+  function safePhotoUrl(value) {
+    if (typeof value !== 'string' || !value || value.length > 2048 || /\s/.test(value) || !/^https?:\/\/[^/?#]+/i.test(value)) return null;
+    try {
+      const url = new URL(value);
+      return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
   function render(rows) {
     list.replaceChildren();
     count.textContent = String(rows.length);
@@ -52,10 +62,29 @@
       const meta = element('div', 'card-meta', '');
       meta.append(element('span', '', `類別：${row.category}`));
       meta.append(element('span', row.urgency === '高' ? 'urgency-high' : '', `緊急程度：${row.urgency}`));
+      meta.append(element('span', '', `負責人：${row.assignee || '未指定'}`));
       const bottom = element('div', 'card-bottom', '');
       bottom.append(element('span', '', `報修人：${row.reporter_name}`));
       bottom.append(element('span', '', displayDate(row.created_at)));
       card.append(top, meta, element('p', 'card-description', row.description), bottom);
+      const photo = element('p', 'photo-url', '');
+      if (row.photo_url) {
+        const href = safePhotoUrl(row.photo_url);
+        photo.append(element('span', '', '照片網址：'));
+        if (href) {
+          const link = element('a', '', row.photo_url);
+          link.href = href;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.referrerPolicy = 'no-referrer';
+          photo.append(link);
+        } else {
+          photo.append(element('span', '', '網址格式不符，無法開啟'));
+        }
+      } else {
+        photo.textContent = '照片網址：未提供';
+      }
+      card.insertBefore(photo, bottom);
       list.append(card);
     }
   }
@@ -70,7 +99,7 @@
     message(listMessage, '正在讀取最近的報修…');
     try {
       const { data, error } = await client.from('repair_requests')
-        .select('id,created_at,reporter_name,location,category,description,urgency,status')
+        .select('id,created_at,reporter_name,location,category,description,urgency,status,assignee,photo_url')
         .order('created_at', { ascending: false })
         .order('id', { ascending: false })
         .limit(20);
@@ -103,10 +132,16 @@
       location: String(values.get('location') || '').trim(),
       category: String(values.get('category') || ''),
       description: String(values.get('description') || '').trim(),
-      urgency: String(values.get('urgency') || '')
+      urgency: String(values.get('urgency') || ''),
+      assignee: String(values.get('assignee') || '').trim(),
+      photo_url: String(values.get('photo_url') || '').trim() || null
     };
-    if (!payload.reporter_name || !payload.location || !payload.description) {
-      message(formMessage, '報修人、地點與問題說明不可只填空白。', 'error');
+    if (!payload.reporter_name || !payload.location || !payload.description || !payload.assignee) {
+      message(formMessage, '報修人、地點、負責人與問題說明不可只填空白。', 'error');
+      return;
+    }
+    if (payload.photo_url && !safePhotoUrl(payload.photo_url)) {
+      message(formMessage, '照片網址請填寫有效的 HTTP 或 HTTPS 網址，或留白。', 'error');
       return;
     }
     if (!['設備', '網路', '環境', '其他'].includes(payload.category)
@@ -121,7 +156,7 @@
     submitButton.textContent = '送出中…';
     message(formMessage, '正在送出報修，請稍候…');
     try {
-      // 只傳送獲授 INSERT 權限的五個欄位；不送 status、id、created_at。
+      // 只傳送獲授 INSERT 權限的七個欄位；不送 status、id、created_at。
       const { error } = await client.from('repair_requests').insert(payload);
       if (error) throw error;
       form.reset();
