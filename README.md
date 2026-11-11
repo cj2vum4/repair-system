@@ -13,3 +13,14 @@
 - 登記時間（系統自動產生）
 雲端任務測試
 [報修欄位表（Excel）](文件/報修欄位表.xlsx)
+
+## 網頁與發佈
+
+首頁為根目錄的 `index.html`，使用純 HTML/CSS/JavaScript 與 CDN 提供的 supabase-js v2。
+`config.js` 僅包含可公開的 Supabase 網址及 publishable key，不得放入 secret 或 service_role 金鑰。
+
+在 GitHub 的 Settings → Pages 選擇「Deploy from a branch」，來源設為 `main`、`/ (root)`。
+預期網址：https://cj2vum4.github.io/repair-system/ （需先啟用 Pages 並等待部署完成）。
+
+請先在 Supabase 建立 `supabase/schema.sql` 所定義的資料表與權限；加入 SQL 檔或部署前端不會自動執行 SQL。
+表單僅新增五個輸入欄位，`id`、`created_at`、`status` 使用資料庫預設值；清單公開顯示最近 20 筆。
