@@ -9,6 +9,9 @@
   const listMessage = document.querySelector('#list-message');
   const list = document.querySelector('#request-list');
   const count = document.querySelector('#request-count');
+  const filters = document.querySelector('#urgency-filters');
+  let requests = [];
+  let selectedUrgency = '全部';
   let client;
   let submitting = false;
   let loading = false;
@@ -35,11 +38,16 @@
     }).format(date);
   }
 
-  function render(rows) {
+  function render() {
+    const rows = selectedUrgency === '全部'
+      ? requests
+      : requests.filter((row) => row.urgency === selectedUrgency);
     list.replaceChildren();
     count.textContent = String(rows.length);
     if (!rows.length) {
-      list.append(element('p', 'empty-state', '目前還沒有報修紀錄，有問題時歡迎在上方登記。'));
+      list.append(element('p', 'empty-state', requests.length
+        ? `最近 20 筆中沒有緊急程度為「${selectedUrgency}」的報修。`
+        : '目前還沒有報修紀錄，有問題時歡迎在上方登記。'));
       return;
     }
     for (const row of rows) {
@@ -75,7 +83,8 @@
         .order('id', { ascending: false })
         .limit(20);
       if (error) throw error;
-      render(data || []);
+      requests = data || [];
+      render();
       message(listMessage, '');
     } catch (error) {
       message(listMessage, `清單載入失敗，請重新整理再試。${errorText(error)}`, 'error');
@@ -135,6 +144,16 @@
       refreshButton.disabled = loading;
       submitButton.textContent = '送出報修 ↗';
     }
+  });
+
+  filters.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-urgency]');
+    if (!button || !filters.contains(button)) return;
+    selectedUrgency = button.dataset.urgency;
+    for (const filter of filters.querySelectorAll('button')) {
+      filter.setAttribute('aria-pressed', String(filter === button));
+    }
+    render();
   });
 
   refreshButton.addEventListener('click', loadRequests);
